@@ -1,0 +1,17 @@
+{
+  "name": "elm-notepad",
+  "version": "0.0.1",
+  "devDependencies": {
+    "bootstrap": "^3.3.6",
+    "elm": "^0.16.0",
+    "less": "^2.6.0",
+    "less-plugin-clean-css": "^1.5.1",
+    "uglify-js": "^2.6.1"
+  },
+  "scripts": {
+    "clean": "rm -rf ./build || true && mkdir ./build",
+    "build-style": "lessc --verbose --clean-css ./src/style/manifest.less ./build/style.css",
+    "build-elm": "cp ./src/index.html ./build/index.html && elm-make app.elm --output ./build/index.js && uglifyjs ./build/index.js -v -m -o ./build/index.js",
+    "build": "npm run clean && npm run build-elm && npm run build-style"
+  }
+}
