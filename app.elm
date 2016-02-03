@@ -22,6 +22,7 @@ type alias Note =
     { text : String
     , id : Int
     , timeCreated : Float
+    , isSelected : Bool
     }
 
 newNote : String -> Int -> Float -> Note
@@ -29,6 +30,7 @@ newNote text id time =
     { text = text
     , id = id
     , timeCreated = time
+    , isSelected = False
     }
 
 emptyModel : Model
@@ -49,6 +51,7 @@ type Action
     = NoOp
     | Add
     | Update Int String
+    | Select Int
     | Delete Int
     | UpdateTime Float
 
@@ -58,25 +61,35 @@ update action model =
       NoOp -> model
 
       Add ->
-          { model |
-                uid = model.uid + 1
-              , notes =
-                  model.notes ++ [newNote "" (model.uid + 1) model.currentTime]
-              , currentNoteId = model.uid + 1
-          }
+          let
+            newModel = { model |
+                                       uid = model.uid + 1
+                                     , notes =
+                                         model.notes ++ [newNote "" (model.uid + 1) model.currentTime]
+                                     , currentNoteId = model.uid + 1
+                                 }
+            updateSelection n = { n | isSelected = n.id == newModel.currentNoteId }
+            updateSelectionInModel m = { m |
+               notes = List.map updateSelection m.notes
+            }
+          in
+          updateSelectionInModel newModel
 
       Update id text ->
           let updateNote n = if n.id == id then { n | text = text } else n
           in
           { model | notes = List.map updateNote model.notes }
 
+      Select id ->
+          let updateSelection n = { n | isSelected = n.id == id }
+          in
+          { model | currentNoteId = id, notes = List.map updateSelection model.notes }
+
       Delete id ->
           { model | notes = List.filter (\n -> n.id /= id) model.notes }
 
       UpdateTime time ->
-          { model |
-              currentTime = time
-          }
+          { model | currentTime = time }
 
 ---- VIEW ----
 
@@ -107,11 +120,17 @@ noteItem address note =
         else note.text
     in
     li
-      [ class "list-group-item" ]
-      [ div [ class "note-info" ] [text (toString note.id) ]
-        , div [ classList [ ("new-note", (String.isEmpty note.text)) ] ] [
-              div [ class "note-title" ] [ text (truncateText noteText 15) ]
+      [ classList [ ("list-group-item", True), ("note-selected", note.isSelected ) ]
+      , onClick address (Select note.id) ]
+        [ div [ classList [ ("new-note", (String.isEmpty note.text)) ] ] [
+              div [ class "note-title" ] [ text (truncateText noteText 12) ]
             , div [ class "note-time" ] [ text ( formatTime note.timeCreated ) ]
+            , button [
+                  class "note-delete"
+                , onClick address (Delete note.id)
+            ] [
+                span [ class "glyphicon glyphicon-trash" ] []
+            ]
         ]
       ]
 
@@ -143,21 +162,14 @@ noteEditor address note =
     in
     div
       []
-      [
-        span [ class "note-info" ] [text (toString note.id) ]
-        , textarea
-        [ class "note-editor"
-        , on "input" targetValue (Signal.message address << update)
-        , value note.text
-        ]
-        []
-        , button [
-               classList [
-                  ("add-note", True),
-                  ("btn", True)
-               ]
-               , on "click" targetValue (\_ -> Signal.message address Add)
-           ]
+      [ textarea
+            [ class "note-editor"
+            , on "input" targetValue (Signal.message address << update)
+            , value note.text ]
+            []
+        , button
+           [ classList [ ("add-note", True), ("btn", True) ]
+           , on "click" targetValue (\_ -> Signal.message address Add) ]
            [ text "+" ]
       ]
 

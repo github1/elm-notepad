@@ -5,6 +5,8 @@ html, body {
 
 body {
   overflow: hidden;
+  font-family: 'Open Sans', sans-serif;
+  color: #999;
 }
 
 div {
@@ -20,6 +22,10 @@ div {
   overflow-x: hidden;
 }
 
+.note-title {
+  font-size: 1.1em;
+}
+
 .add-note {
   position: absolute;
   opacity: 0.7;
@@ -32,21 +38,37 @@ div {
 }
 
 .note-list li {
+  .noselect();
+  cursor: default;
+  &.note-selected {
+    background-color: #ffffaa;
+  }
+  &:hover {
+    background-color: #ffffaa;
+  }
   border-right: 0px;
   border-left: 0px;
   word-wrap: break-word;
+  user-select: none;
   .note-title {
     font-weight: bold;
   }
   .new-note {
     .note-title {
-      color: #4444dd;
+      color: #1551dd;
     }
   }
   .note-time {
     font-style: italic;
     color: #999;
     font-size: 0.8em;
+  }
+  .note-delete {
+    cursor: pointer;
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    outline: none;
   }
 }
 
@@ -57,4 +79,15 @@ textarea.note-editor {
   resize: none;
   padding: 5px;
   outline: none;
+  background-color: #ffffaa;
+  color: #8b4513;
+}
+
+.noselect {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }

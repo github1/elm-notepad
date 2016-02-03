@@ -10,7 +10,7 @@
   },
   "scripts": {
     "clean": "rm -rf ./build || true && mkdir ./build",
-    "build-style": "lessc --verbose --clean-css ./src/style/manifest.less ./build/style.css",
+    "build-style": "lessc --verbose --clean-css ./src/style/manifest.less ./build/style.css && cp -R ./node_modules/bootstrap/dist/fonts/ ./build/fonts/ ",
     "build-elm": "cp ./src/index.html ./build/index.html && elm-make app.elm --output ./build/index.js && uglifyjs ./build/index.js -v -m -o ./build/index.js",
     "build": "npm run clean && npm run build-elm && npm run build-style"
   }
