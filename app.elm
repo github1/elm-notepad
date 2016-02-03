@@ -5,6 +5,8 @@ import Html.Lazy exposing (lazy, lazy2, lazy3)
 import Json.Decode as Json
 import Signal exposing (Signal, Address)
 import String
+import Time exposing (every, second)
+import Date exposing (year, hour, minute, second, fromTime)
 import Window
 
 ---- MODEL ----
@@ -13,29 +15,33 @@ type alias Model =
     { notes : List Note
     , uid : Int
     , currentNoteId : Int
+    , currentTime : Float
     }
 
 type alias Note =
     { text : String
     , id : Int
+    , timeCreated : Float
     }
 
-newNote : String -> Int -> Note
-newNote text id =
+newNote : String -> Int -> Float -> Note
+newNote text id time =
     { text = text
     , id = id
+    , timeCreated = time
     }
 
 emptyModel : Model
 emptyModel =
-    { notes = [ newNote "" 0 ]
+    { notes = []
     , uid = 0
     , currentNoteId = 0
+    , currentTime = 0
     }
 
 currentNote : Model -> Note
 currentNote model =
-   Maybe.withDefault (newNote "" 0) (List.head (List.filter (\n -> n.id == model.currentNoteId) model.notes))
+   Maybe.withDefault (newNote "" 0 0) (List.head (List.filter (\n -> n.id == model.currentNoteId) model.notes))
 
 ---- UPDATE ----
 
@@ -44,6 +50,7 @@ type Action
     | Add
     | Update Int String
     | Delete Int
+    | UpdateTime Float
 
 update: Action -> Model -> Model
 update action model =
@@ -54,7 +61,7 @@ update action model =
           { model |
                 uid = model.uid + 1
               , notes =
-                  model.notes ++ [newNote "" (model.uid + 1)]
+                  model.notes ++ [newNote "" (model.uid + 1) model.currentTime]
               , currentNoteId = model.uid + 1
           }
 
@@ -65,6 +72,11 @@ update action model =
 
       Delete id ->
           { model | notes = List.filter (\n -> n.id /= id) model.notes }
+
+      UpdateTime time ->
+          { model |
+              currentTime = time
+          }
 
 ---- VIEW ----
 
@@ -91,16 +103,31 @@ noteList address notes =
 noteItem : Address Action -> Note -> Html
 noteItem address note =
     let noteText =
-        if String.isEmpty note.text then "New note"
+        if String.isEmpty note.text then "New Note"
         else note.text
     in
     li
       [ class "list-group-item" ]
       [ div [ class "note-info" ] [text (toString note.id) ]
         , div [ classList [ ("new-note", (String.isEmpty note.text)) ] ] [
-            text (truncateText noteText 15)
+              div [ class "note-title" ] [ text (truncateText noteText 15) ]
+            , div [ class "note-time" ] [ text ( formatTime note.timeCreated ) ]
         ]
       ]
+
+formatTime : Float -> String
+formatTime t =
+  let date' = fromTime t
+      hour24' = Date.hour date'
+      hour' = String.padLeft 2 '0' (toString (if hour24' > 12 then hour24' - 12 else hour24'))
+      period' = if hour24' > 12 then "PM" else "AM"
+      minute' = String.padLeft 2 '0' (toString (Date.minute date'))
+      day' = String.padLeft 2 '0' (toString (Date.day date'))
+      month' = String.padLeft 2 '0' (toString (Date.month date'))
+      year' = toString (year date')
+      now = "" ++ month' ++ " " ++ day' ++ " " ++ year' ++ " " ++ hour' ++ ":" ++ minute' ++ " " ++ period'
+  in
+  now
 
 truncateText : String -> Int -> String
 truncateText text len =
@@ -151,9 +178,13 @@ main : Signal Html
 main =
   Signal.map (view actions.address) model
 
+timeSignal : Signal Action
+timeSignal =
+    Signal.map (\t -> ( UpdateTime t )) (Time.every Time.second)
+
 model : Signal Model
 model =
-  Signal.foldp update initialModel actions.signal
+  Signal.foldp update initialModel (Signal.merge actions.signal timeSignal)
 
 initialModel : Model
 initialModel =

@@ -31,14 +31,23 @@ div {
   display: none;
 }
 
-.new-note {
-  font-style: italic;
-  color: #999;
-}
-
 .note-list li {
+  border-right: 0px;
+  border-left: 0px;
   word-wrap: break-word;
-  height: 40px;
+  .note-title {
+    font-weight: bold;
+  }
+  .new-note {
+    .note-title {
+      color: #4444dd;
+    }
+  }
+  .note-time {
+    font-style: italic;
+    color: #999;
+    font-size: 0.8em;
+  }
 }
 
 textarea.note-editor {
