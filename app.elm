@@ -89,7 +89,18 @@ update action model =
           { model | notes = List.filter (\n -> n.id /= id) model.notes }
 
       UpdateTime time ->
-          { model | currentTime = time }
+          let setSelected n = { n |
+                         isSelected = True
+              }
+          in
+          if (model.uid == 0) && (List.isEmpty model.notes) then
+          { model |
+                    currentTime = time
+                  , uid = model.uid + 1
+                  , currentNoteId = model.uid + 1
+                  , notes = [ setSelected (newNote "" (model.uid + 1) time) ] }
+          else { model | currentTime = time }
+
 
 ---- VIEW ----
 
@@ -99,10 +110,10 @@ view address model =
       [ class "container-fluid" ]
       [ div [ class "row" ]
           [ div
-              [ class "scroll col col-xs-2" ]
+              [ class "scroll col col-xs-3" ]
               [ lazy2 noteList address model.notes ]
           ,  div
-              [ class "col col-xs-10" ]
+              [ class "col col-xs-9" ]
               [ lazy2 noteEditor address (currentNote model) ]
           ]
       ]
@@ -116,17 +127,17 @@ noteList address notes =
 noteItem : Address Action -> Note -> Html
 noteItem address note =
     let noteText =
-        if String.isEmpty note.text then "New Note"
+        if String.isEmpty (String.trim note.text) then "New Note"
         else note.text
     in
     li
       [ classList [ ("list-group-item", True), ("note-selected", note.isSelected ) ]
       , onClick address (Select note.id) ]
-        [ div [ classList [ ("new-note", (String.isEmpty note.text)) ] ] [
-              div [ class "note-title" ] [ text (truncateText noteText 12) ]
-            , div [ class "note-time" ] [ text ( formatTime note.timeCreated ) ]
+        [ div [ classList [ ("new-note", (String.isEmpty (String.trim note.text))) ] ] [
+              span [ class "note-title" ] [ text (truncateText noteText 20) ]
+            , span [ class "note-time" ] [ text ( formatTime note.timeCreated ) ]
             , button [
-                  class "note-delete"
+                  class "btn btn-primary note-delete"
                 , onClick address (Delete note.id)
             ] [
                 span [ class "glyphicon glyphicon-trash" ] []
@@ -168,9 +179,9 @@ noteEditor address note =
             , value note.text ]
             []
         , button
-           [ classList [ ("add-note", True), ("btn", True) ]
+           [ classList [ ("add-note btn btn-primary", True), ("btn", True) ]
            , on "click" targetValue (\_ -> Signal.message address Add) ]
-           [ text "+" ]
+           [ span [ class "glyphicon glyphicon-plus"] [] ]
       ]
 
 onEnter : Address a -> a -> Attribute
@@ -192,7 +203,7 @@ main =
 
 timeSignal : Signal Action
 timeSignal =
-    Signal.map (\t -> ( UpdateTime t )) (Time.every Time.second)
+    Signal.map (\t -> ( UpdateTime t )) (Time.every Time.millisecond)
 
 model : Signal Model
 model =
