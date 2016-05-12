@@ -1,5 +1,6 @@
 .idea
 *.log
+*.no_history
 node_modules
 elm-stuff
 build
