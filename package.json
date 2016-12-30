@@ -2,8 +2,11 @@
   "name": "elm-notepad",
   "version": "0.0.1",
   "devDependencies": {
+    "babel-preset-latest": "^6.16.0",
+    "babelify": "^7.3.0",
     "bootstrap": "^3.3.6",
-    "elm": "^0.17.0",
+    "browserify": "^13.1.1",
+    "elm": "^0.18.0",
     "less": "^2.6.0",
     "less-plugin-clean-css": "^1.5.1",
     "uglify-js": "^2.6.1"
@@ -11,7 +14,12 @@
   "scripts": {
     "clean": "rm -rf ./build || true && mkdir ./build",
     "build-style": "lessc --verbose --clean-css ./src/style/manifest.less ./build/style.css && cp -R ./node_modules/bootstrap/dist/fonts/ ./build/fonts/ ",
-    "build-elm": "./node_modules/.bin/elm-package install -y && cp ./src/index.html ./build/index.html && elm-make app.elm --output ./build/index.js && uglifyjs ./build/index.js -v -m -o ./build/index.js",
-    "build": "npm run clean && npm run build-elm && npm run build-style"
+    "build-elm": "./node_modules/.bin/elm-package install -y && cp ./src/index.html ./build/index.html && elm-make src/elm/app.elm --output ./build/index.js && uglifyjs ./build/index.js -v -m -o ./build/index.js",
+    "build-js": "browserify src/js/port_adapter.js -o build/port_adapter.js -t [ babelify ] --debug",
+    "build": "npm run clean && npm run build-js && npm run build-elm && npm run build-style",
+    "start": "npm run build && elm-reactor"
+  },
+  "dependencies": {
+    "moment": "^2.17.1"
   }
 }

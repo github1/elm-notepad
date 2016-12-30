@@ -1,52 +1,40 @@
+port module Main exposing (..)
+
 import Html exposing (..)
-import Html.App as Html
 import Html.Attributes exposing (..)
 import Html.Events as Events exposing (..)
-import Basics exposing (toString)
-import String exposing (..)
-import Time exposing (Time, second)
-import Date exposing (year, hour, minute, second, fromTime)
-
 
 main =
     Html.program
         { init = init
         , view = view
         , update = update
-        , subscriptions = subs
+        , subscriptions = subscriptions
         }
 
-
-
 -- MODEL
-
 
 type alias Model =
     { notes : List Note
     , uid : Int
     , currentNoteId : Int
-    , currentTime : Float
     }
-
 
 emptyModel : Model
 emptyModel =
     { notes = []
     , uid = 0
     , currentNoteId = 0
-    , currentTime = 0
     }
-
 
 type alias Note =
     { text : String
     , id : Int
-    , timeCreated : Float
+    , timeCreated : String
     , isSelected : Bool
     }
 
-
-newNote : String -> Int -> Float -> Note
+newNote : String -> Int -> String -> Note
 newNote text id time =
     { text = text
     , id = id
@@ -54,15 +42,11 @@ newNote text id time =
     , isSelected = False
     }
 
-
 currentNote : Model -> Note
 currentNote model =
-    Maybe.withDefault (newNote "" 0 0) (List.head (List.filter (\n -> n.id == model.currentNoteId) model.notes))
-
-
+    Maybe.withDefault (newNote "" 0 "") (List.head (List.filter (\n -> n.id == model.currentNoteId) model.notes))
 
 -- VIEW
-
 
 view : Model -> Html Msg
 view model =
@@ -75,12 +59,10 @@ view model =
             ]
         ]
 
-
 noteList : List Note -> Html Msg
 noteList notes =
     ul [ class "note-list list-group" ]
         (List.reverse (List.map noteItem notes))
-
 
 noteItem : Note -> Html Msg
 noteItem note =
@@ -97,7 +79,7 @@ noteItem note =
                   , Events.onClick (SelectNote note.id)
                 ]
                 [ span [ class "note-title" ] [ text (truncateText noteText 20) ]
-                , span [ class "note-time" ] [ text (formatTime note.timeCreated) ]
+                , span [ class "note-time" ] [ text note.timeCreated ]
                 , button
                     [ class "btn btn-primary note-delete"
                     , Events.onClick (DeleteNote note.id)
@@ -106,7 +88,6 @@ noteItem note =
                     ]
                 ]
             ]
-
 
 noteEditor : Note -> Html Msg
 noteEditor note =
@@ -119,55 +100,10 @@ noteEditor note =
             []
         , button
             [ classList [ ( "add-note btn btn-primary", True ), ( "btn", True ) ]
-            , Events.onClick AddNote
+            , Events.onClick CreateNote
             ]
             [ span [ class "glyphicon glyphicon-plus" ] [] ]
         ]
-
-
-formatTime : Float -> String
-formatTime t =
-    let
-        date_val =
-            (fromTime t)
-
-        hour_val24_val =
-            (Date.hour date_val)
-
-        hour_val =
-            String.padLeft 2
-                '0'
-                (Basics.toString
-                    (if hour_val24_val > 12 then
-                        hour_val24_val - 12
-                     else
-                        hour_val24_val
-                    )
-                )
-
-        period_val =
-            if hour_val24_val > 12 then
-                "PM"
-            else
-                "AM"
-
-        minute_val =
-            String.padLeft 2 '0' (Basics.toString (Date.minute date_val))
-
-        day_val =
-            String.padLeft 2 '0' (Basics.toString (Date.day date_val))
-
-        month_val =
-            String.padLeft 2 '0' (Basics.toString (Date.month date_val))
-
-        year_val =
-            Basics.toString (year date_val)
-
-        now =
-            "" ++ month_val ++ " " ++ day_val ++ " " ++ year_val ++ " " ++ hour_val ++ ":" ++ minute_val ++ " " ++ period_val
-    in
-        now
-
 
 truncateText : String -> Int -> String
 truncateText text len =
@@ -176,36 +112,30 @@ truncateText text len =
     else
         text
 
-
-
 -- UPDATE
 
-
 type Msg
-    = Tick Time
-    | AddNote
+    = CreateNote
+    | AddNote String
     | UpdateNote Int String
     | DeleteNote Int
     | SelectNote Int
 
+port createNote : String -> Cmd msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Tick newTime ->
-            let
-                newModel =
-                    { model | currentTime = newTime }
-            in
-                ( newModel, Cmd.none )
+        CreateNote ->
+            ( model, createNote "a" )
 
-        AddNote ->
+        AddNote noteTimeCreated ->
             let
                 newModel =
                     { model
                         | uid = model.uid + 1
                         , notes =
-                            model.notes ++ [ newNote "" (model.uid + 1) model.currentTime ]
+                            model.notes ++ [ newNote "" (model.uid + 1) noteTimeCreated ]
                         , currentNoteId = model.uid + 1
                     }
 
@@ -228,7 +158,20 @@ update msg model =
                 ( { model | notes = List.map updateNote model.notes }, Cmd.none )
 
         DeleteNote id ->
-            ( { model | notes = List.filter (\n -> n.id /= id) model.notes }, Cmd.none )
+            let
+                newModel =
+                    { model
+                        | notes = List.filter (\n -> n.id /= id) model.notes
+                    }
+                updateSelectionIfDeleted model =
+                    if model.currentNoteId == id then
+                     { model
+                        | currentNoteId = 1
+                     }
+                    else
+                        model
+            in
+            ( updateSelectionIfDeleted newModel, Cmd.none )
 
         SelectNote id ->
             let
@@ -246,12 +189,14 @@ update msg model =
                 ( updateSelectionInModel newModel, Cmd.none )
 
 
-
 init : ( Model, Cmd Msg )
 init =
     ( emptyModel, Cmd.none )
 
+-- SUBSCRIPTIONS
 
-subs : Model -> Sub Msg
-subs model =
-    Time.every Time.second Tick
+port notes : (String -> msg) -> Sub msg
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    notes AddNote
