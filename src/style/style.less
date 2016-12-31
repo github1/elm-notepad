@@ -5,8 +5,6 @@ html, body {
 
 body {
   overflow: hidden;
-  font-family: 'Open Sans', sans-serif;
-  color: #999;
 }
 
 div {
@@ -22,15 +20,20 @@ div {
   overflow-x: hidden;
 }
 
-.note-title {
-  font-size: 1.1em;
-}
-
 .add-note {
   position: absolute;
   opacity: 0.7;
   left: 6px;
   bottom: 6px;
+}
+
+.empty-add-note {
+  opacity: 0.7;
+  position: absolute;
+  top: 50%;
+  left:50%;
+  transform: translate(-50%,-50%);
+  text-transform: none;
 }
 
 .note-info {
@@ -42,6 +45,7 @@ div {
   cursor: default;
   &.note-selected {
     background-color: lighten(@brand-primary, 40%);
+    color: darken(@brand-primary, 40%);
   }
   &:hover {
     //background-color: #ffffaa;
@@ -50,11 +54,16 @@ div {
   border-left: 0px;
   user-select: none;
   .note-title {
+    padding-right: 38px;
+    font-size: 1.1em;
     font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .new-note {
     .note-title {
-      display: block;
+      //display: block;
       //color: #1551dd;
     }
   }
@@ -79,7 +88,6 @@ textarea.note-editor {
   resize: none;
   padding: 5px;
   outline: none;
-  background-color: transparent;
   &:focus {
     .box-shadow(none);
   }

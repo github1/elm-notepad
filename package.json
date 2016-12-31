@@ -13,7 +13,7 @@
   },
   "scripts": {
     "clean": "rm -rf ./build || true && mkdir ./build",
-    "build-style": "lessc --verbose --clean-css ./src/style/manifest.less ./build/style.css && cp -R ./node_modules/bootstrap/dist/fonts/ ./build/fonts/ ",
+    "build-style": "sh bootswatch.sh spacelab && lessc --verbose --clean-css ./src/style/manifest.less ./build/style.css && cp -R ./node_modules/bootstrap/dist/fonts/ ./build/fonts/ ",
     "build-elm": "./node_modules/.bin/elm-package install -y && cp ./src/index.html ./build/index.html && elm-make src/elm/app.elm --output ./build/index.js && uglifyjs ./build/index.js -v -m -o ./build/index.js",
     "build-js": "browserify src/js/port_adapter.js -o build/port_adapter.js -t [ babelify ] --debug",
     "build": "npm run clean && npm run build-js && npm run build-elm && npm run build-style",

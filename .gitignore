@@ -4,4 +4,5 @@
 node_modules
 elm-stuff
 build
+**/style/theme/**
 .DS_Store
