@@ -5,6 +5,7 @@ import Html.Attributes exposing (..)
 import Html.Events as Events exposing (..)
 import Json.Decode as Json
 
+
 main =
     Html.program
         { init = init
@@ -13,12 +14,16 @@ main =
         , subscriptions = subscriptions
         }
 
+
+
 -- MODEL
+
 
 type alias Model =
     { notes : List Note
     , currentNoteId : Int
     }
+
 
 emptyModel : Model
 emptyModel =
@@ -26,20 +31,24 @@ emptyModel =
     , currentNoteId = 0
     }
 
+
 type alias Note =
     { text : String
     , id : Int
     , timeCreated : String
     }
 
+
 type alias NoteUpdate =
     { id : Int, text : String }
+
 
 createNoteUpdatePayload : Int -> String -> NoteUpdate
 createNoteUpdatePayload id text =
     { id = id
     , text = text
     }
+
 
 newNote : String -> Int -> String -> Note
 newNote text id time =
@@ -48,22 +57,26 @@ newNote text id time =
     , timeCreated = time
     }
 
+
 currentNote : Model -> Note
 currentNote model =
     Maybe.withDefault (newNote "" 0 "") (List.head (List.filter (\n -> n.id == model.currentNoteId) model.notes))
 
+
+
 -- VIEW
 
+
 view : Model -> Html Msg
-view model = if List.isEmpty model.notes then
+view model =
+    if List.isEmpty model.notes then
         div [ class "container-fluid" ]
             [ div [ class "row" ]
-                [  div [ class "col col-xs-12" ]
-                   [
-                        button
-                            [ classList [ ( "empty-add-note btn btn-lg btn-primary", True ), ( "btn", True ) ] , Events.onClick CreateNote ]
-                            [ text "Get started" ]
-                   ]
+                [ div [ class "col col-xs-12" ]
+                    [ button
+                        [ classList [ ( "empty-add-note btn btn-lg btn-primary", True ), ( "btn", True ) ], Events.onClick CreateNote ]
+                        [ text "Get started" ]
+                    ]
                 ]
             ]
     else
@@ -76,10 +89,12 @@ view model = if List.isEmpty model.notes then
                 ]
             ]
 
+
 noteList : Model -> List Note -> Html Msg
 noteList model notes =
     ul [ class "note-list list-group" ]
-        (List.reverse (List.map (\n -> noteItem model n ) notes))
+        (List.reverse (List.map (\n -> noteItem model n) notes))
+
 
 noteItem : Model -> Note -> Html Msg
 noteItem model note =
@@ -90,10 +105,10 @@ noteItem model note =
             else
                 note.text
     in
-        li [ classList [ ( "list-group-item", True ), ( "note-selected", (.id note == .currentNoteId model)) ] ]
+        li [ classList [ ( "list-group-item", True ), ( "note-selected", (.id note == .currentNoteId model) ) ] ]
             [ div
                 [ classList [ ( "new-note", (String.isEmpty (String.trim note.text)) ) ]
-                  , Events.onClick (SelectNote note.id)
+                , Events.onClick (SelectNote note.id)
                 ]
                 [ div [ class "note-title" ] [ text noteText ]
                 , div [ class "note-time" ] [ text note.timeCreated ]
@@ -105,6 +120,7 @@ noteItem model note =
                     ]
                 ]
             ]
+
 
 noteEditor : Model -> Note -> Html Msg
 noteEditor model note =
@@ -123,7 +139,10 @@ noteEditor model note =
             [ span [ class "glyphicon glyphicon-plus" ] [] ]
         ]
 
+
+
 -- UPDATE
+
 
 type Msg
     = CreateNote
@@ -133,11 +152,15 @@ type Msg
     | DeleteNote Int
     | SelectNote Int
 
+
 port createNote : () -> Cmd msg
+
 
 port modifyNote : NoteUpdate -> Cmd msg
 
+
 port deleteNote : Int -> Cmd msg
+
 
 applyUpdate : Msg -> Model -> ( Model, Cmd Msg )
 applyUpdate msg model =
@@ -158,36 +181,48 @@ applyUpdate msg model =
             ( model, deleteNote id )
 
         SelectNote id ->
-            ( { model | currentNoteId = id } , Cmd.none )
+            ( { model | currentNoteId = id }, Cmd.none )
+
 
 applySelection : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-applySelection ( model, msg) =
+applySelection ( model, msg ) =
     let
-        selectionMissing mdl = List.isEmpty <| List.filter (\n -> .id n == mdl.currentNoteId) mdl.notes
-        newSelection mdl = if selectionMissing mdl then
+        selectionMissing mdl =
+            List.isEmpty <| List.filter (\n -> .id n == mdl.currentNoteId) mdl.notes
+
+        newSelection mdl =
+            if selectionMissing mdl then
                 { mdl | currentNoteId = Maybe.withDefault 0 <| List.head <| List.map (\n -> .id n) <| List.reverse mdl.notes }
             else
                 mdl
     in
-    ( newSelection model, msg )
-    --( { model | currentNoteId = Maybe.withDefault 0 <| List.head <| List.map (\n -> .id n) <| List.filter (\n -> n.id == model.currentNoteId) model.notes }, msg )
+        ( newSelection model, msg )
+
+
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model = applySelection <| applyUpdate msg model
+update msg model =
+    applySelection <| applyUpdate msg model
+
 
 init : ( Model, Cmd Msg )
 init =
     ( emptyModel, Cmd.none )
 
+
+
 -- SUBSCRIPTIONS
+
 
 port notes : (List Note -> msg) -> Sub msg
 
+
 port noteCreated : (List Note -> msg) -> Sub msg
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch [
-        notes UpdateNotes
-      , noteCreated UpdateCreatedNote
-    ]
+    Sub.batch
+        [ notes UpdateNotes
+        , noteCreated UpdateCreatedNote
+        ]
