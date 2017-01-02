@@ -3,7 +3,7 @@ port module Main exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events as Events exposing (..)
-import Json.Decode as Json
+import Json.Decode as Json exposing (..)
 
 
 main =
@@ -74,7 +74,7 @@ view model =
             [ div [ class "row" ]
                 [ div [ class "col col-xs-12" ]
                     [ button
-                        [ classList [ ( "empty-add-note btn btn-lg btn-primary", True ), ( "btn", True ) ], Events.onClick CreateNote ]
+                        [ classList [ ( "empty-add-note btn btn-lg btn-primary", True ), ( "btn", True ) ], Events.onClick AddNoteCommand ]
                         [ text "Get started" ]
                     ]
                 ]
@@ -108,13 +108,13 @@ noteItem model note =
         li [ classList [ ( "list-group-item", True ), ( "note-selected", (.id note == .currentNoteId model) ) ] ]
             [ div
                 [ classList [ ( "new-note", (String.isEmpty (String.trim note.text)) ) ]
-                , Events.onClick (SelectNote note.id)
+                , Events.onClick (SelectNoteCommand note.id)
                 ]
                 [ div [ class "note-title" ] [ text noteText ]
                 , div [ class "note-time" ] [ text note.timeCreated ]
                 , button
                     [ class "btn btn-primary note-delete"
-                    , Events.onWithOptions "click" { stopPropagation = True, preventDefault = False } (Json.succeed <| DeleteNote note.id)
+                    , Events.onWithOptions "click" { stopPropagation = True, preventDefault = False } (Json.succeed <| DeleteNoteCommand note.id)
                     ]
                     [ span [ class "glyphicon glyphicon-trash" ] []
                     ]
@@ -127,14 +127,14 @@ noteEditor model note =
     div []
         [ textarea
             [ class "note-editor"
-            , Events.onInput (\str -> UpdateNote <| createNoteUpdatePayload note.id str)
-            , value note.text
+            , Events.onInput (\str -> UpdateNoteCommand note.id str)
+            , Html.Attributes.value note.text
             , disabled (model.currentNoteId == 0)
             ]
             []
         , button
             [ classList [ ( "add-note btn btn-primary", True ), ( "btn", True ) ]
-            , Events.onClick CreateNote
+            , Events.onClick AddNoteCommand
             ]
             [ span [ class "glyphicon glyphicon-plus" ] [] ]
         ]
@@ -143,46 +143,84 @@ noteEditor model note =
 
 -- UPDATE
 
-
 type Msg
-    = CreateNote
-    | UpdateCreatedNote (List Note)
-    | UpdateNote NoteUpdate
-    | UpdateNotes (List Note)
-    | DeleteNote Int
-    | SelectNote Int
+    = AddNoteCommand
+    | DeleteNoteCommand Int
+    | SelectNoteCommand Int
+    | UpdateNoteCommand Int String
+    | ApplyEvents (List String)
 
+port commandPort : List String -> Cmd msg
 
-port createNote : () -> Cmd msg
-
-
-port modifyNote : NoteUpdate -> Cmd msg
-
-
-port deleteNote : Int -> Cmd msg
-
+type alias EventHeader = { eventType : String }
 
 applyUpdate : Msg -> Model -> ( Model, Cmd Msg )
 applyUpdate msg model =
     case msg of
-        CreateNote ->
-            ( model, createNote () )
+        AddNoteCommand ->
+            ( model, commandPort ["AddNoteCommand"] )
 
-        UpdateCreatedNote noteList ->
-            ( { model | notes = noteList, currentNoteId = Maybe.withDefault model.currentNoteId <| List.head <| List.map (\n -> .id n) (List.reverse noteList) }, Cmd.none )
+        DeleteNoteCommand id ->
+            ( model, commandPort ["DeleteNoteCommand", "id", toString id] )
 
-        UpdateNotes noteList ->
-            ( { model | notes = noteList }, Cmd.none )
+        SelectNoteCommand id ->
+            ( model, commandPort ["SelectNoteCommand", "id", toString id] )
 
-        UpdateNote noteUpdatePayload ->
-            ( model, modifyNote noteUpdatePayload )
+        UpdateNoteCommand id text ->
+            ( model, commandPort ["UpdateNoteCommand", "id", toString id, "text", text] )
 
-        DeleteNote id ->
-            ( model, deleteNote id )
-
-        SelectNote id ->
-            ( { model | currentNoteId = id }, Cmd.none )
-
+        ApplyEvents serializedEvents ->
+            let
+                decodedEvents = List.map (\s ->
+                    case Json.decodeString (Json.field "@type" string) s of
+                    Err msg ->
+                        { eventType = "None", payload = s }
+                    Ok result ->
+                        { eventType = result, payload = s }) serializedEvents
+                decodedEventsStr = String.join "," <| List.map (\e -> .eventType e) decodedEvents
+                applyEvents model = List.foldl (\t acc ->
+                        if .eventType t == "NoteAddedEvent" then
+                            let
+                                noteDecoder : Decoder Note
+                                noteDecoder =
+                                            Json.map3 Note
+                                                (Json.field "text" string)
+                                                (Json.field "id" int)
+                                                (Json.field "timeCreated" string)
+                                note = case Json.decodeString noteDecoder (.payload t) of
+                                    Err msg -> newNote "" 0 ""
+                                    Ok result -> result
+                            in
+                            { acc | notes = (::) note acc.notes }
+                        else if .eventType t == "NoteDeletedEvent" then
+                            let
+                                idToDelete = case Json.decodeString (field "id" int) (.payload t) of
+                                    Err msg -> 0
+                                    Ok result -> result
+                            in
+                            { acc | notes = List.filter (\n -> .id n /= idToDelete) acc.notes }
+                        else if .eventType t == "NoteSelectedEvent" then
+                            let
+                                idToSelect = case Json.decodeString (field "id" int) (.payload t) of
+                                    Err msg -> 0
+                                    Ok result -> result
+                            in
+                            { acc | currentNoteId = idToSelect }
+                        else if .eventType t == "NoteUpdatedEvent" then
+                            let
+                                idToUpdate = case Json.decodeString (field "id" int) (.payload t) of
+                                    Err msg -> 0
+                                    Ok result -> result
+                                textUpdate = case Json.decodeString (field "text" string) (.payload t) of
+                                    Err msg -> ""
+                                    Ok result -> result
+                            in
+                            { acc | notes = List.map (\n -> if .id n == idToUpdate then newNote textUpdate idToUpdate (.timeCreated n) else n) acc.notes }
+                        else
+                            acc
+                    ) model decodedEvents
+            in
+            ( applyEvents emptyModel, if List.isEmpty decodedEvents then Cmd.none else commandPort ["PrintDecodedEvents",  decodedEventsStr] )
 
 applySelection : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 applySelection ( model, msg ) =
@@ -210,19 +248,11 @@ init =
     ( emptyModel, Cmd.none )
 
 
-
 -- SUBSCRIPTIONS
 
-
-port notes : (List Note -> msg) -> Sub msg
-
-
-port noteCreated : (List Note -> msg) -> Sub msg
-
+port eventPort: (List String -> msg) -> Sub msg
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ notes UpdateNotes
-        , noteCreated UpdateCreatedNote
-        ]
+    eventPort ApplyEvents
+
