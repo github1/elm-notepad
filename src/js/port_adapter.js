@@ -22,7 +22,6 @@ app.ports.commandPort.subscribe((arr) => {
                     "@type": "NoteSelectedEvent",
                     id: id
                 });
-                setTimeout(() => document.getElementsByClassName("note-editor")[0].focus(), 50);
                 break;
             case "DeleteNoteCommand":
                 transaction.push({
@@ -44,18 +43,13 @@ app.ports.commandPort.subscribe((arr) => {
                 });
                 break;
             case "PrintDecodedEvents":
-            /*-
-             var eventNames = arr[1].split(",");
-             switch (eventNames[eventNames.length - 1]) {
-             case "NoteSelectedEvent":
-             var noteEditor = document.getElementsByClassName("note-editor")[0];
-             if(noteEditor) {
-             noteEditor.focus();
-             }
-             break;
-             }
-             */
-             break;
+                var eventNames = arr[1].split(",");
+                switch (eventNames[eventNames.length - 1]) {
+                    case "NoteSelectedEvent":
+                        setTimeout(() => document.getElementsByClassName("note-editor")[0].focus(), 50);
+                        break;
+                }
+                break;
         }
         if (transaction.length > 0) {
             events = events.concat(transaction);

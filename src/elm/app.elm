@@ -101,7 +101,7 @@ noteItem model note =
     let
         noteText =
             if String.isEmpty (String.trim note.text) then
-                "New Note"
+                "new note"
             else
                 note.text
     in
