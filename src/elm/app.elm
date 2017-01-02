@@ -143,16 +143,24 @@ noteEditor model note =
 
 -- UPDATE
 
+decodeInt : String -> String -> Int
+decodeInt json name =  case Json.decodeString (field name Json.int) json of
+    Err msg -> 0
+    Ok result -> result
+
+decodeString : String -> String -> String
+decodeString json name =  case Json.decodeString (field name Json.string) json of
+    Err msg -> ""
+    Ok result -> result
+
+port commandPort : List String -> Cmd msg
+
 type Msg
     = AddNoteCommand
     | DeleteNoteCommand Int
     | SelectNoteCommand Int
     | UpdateNoteCommand Int String
     | ApplyEvents (List String)
-
-port commandPort : List String -> Cmd msg
-
-type alias EventHeader = { eventType : String }
 
 applyUpdate : Msg -> Model -> ( Model, Cmd Msg )
 applyUpdate msg model =
@@ -194,28 +202,25 @@ applyUpdate msg model =
                             { acc | notes = (::) note acc.notes }
                         else if .eventType t == "NoteDeletedEvent" then
                             let
-                                idToDelete = case Json.decodeString (field "id" int) (.payload t) of
-                                    Err msg -> 0
-                                    Ok result -> result
+                                idToDelete = decodeInt t.payload "id"
                             in
                             { acc | notes = List.filter (\n -> .id n /= idToDelete) acc.notes }
                         else if .eventType t == "NoteSelectedEvent" then
                             let
-                                idToSelect = case Json.decodeString (field "id" int) (.payload t) of
-                                    Err msg -> 0
-                                    Ok result -> result
+                                idToSelect = decodeInt t.payload "id"
                             in
                             { acc | currentNoteId = idToSelect }
                         else if .eventType t == "NoteUpdatedEvent" then
                             let
-                                idToUpdate = case Json.decodeString (field "id" int) (.payload t) of
-                                    Err msg -> 0
-                                    Ok result -> result
-                                textUpdate = case Json.decodeString (field "text" string) (.payload t) of
-                                    Err msg -> ""
-                                    Ok result -> result
+                                idToUpdate = decodeInt t.payload "id"
+                                textUpdate = decodeString t.payload "text"
                             in
-                            { acc | notes = List.map (\n -> if .id n == idToUpdate then newNote textUpdate idToUpdate (.timeCreated n) else n) acc.notes }
+                            { acc | notes = List.map (\n ->
+                                    if .id n == idToUpdate then
+                                        newNote textUpdate idToUpdate (.timeCreated n)
+                                    else
+                                        n
+                                ) acc.notes }
                         else
                             acc
                     ) model decodedEvents
