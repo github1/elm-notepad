@@ -169,13 +169,13 @@ applyUpdate msg model =
             ( model, commandPort ["AddNoteCommand"] )
 
         DeleteNoteCommand id ->
-            ( model, commandPort ["DeleteNoteCommand", "id", toString id] )
+            ( model, commandPort ["DeleteNoteCommand", "id:number", toString id] )
 
         SelectNoteCommand id ->
-            ( model, commandPort ["SelectNoteCommand", "id", toString id] )
+            ( model, commandPort ["SelectNoteCommand", "id:number", toString id] )
 
         UpdateNoteCommand id text ->
-            ( model, commandPort ["UpdateNoteCommand", "id", toString id, "text", text] )
+            ( model, commandPort ["UpdateNoteCommand", "id:number", toString id, "text", text] )
 
         ApplyEvents serializedEvents ->
             let
@@ -225,7 +225,7 @@ applyUpdate msg model =
                             acc
                     ) model decodedEvents
             in
-            ( applyEvents emptyModel, if List.isEmpty decodedEvents then Cmd.none else commandPort ["PrintDecodedEvents",  decodedEventsStr] )
+            ( applyEvents emptyModel, if List.isEmpty decodedEvents then Cmd.none else commandPort ["PrintDecodedEvents",  "eventNames", decodedEventsStr] )
 
 applySelection : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 applySelection ( model, msg ) =
