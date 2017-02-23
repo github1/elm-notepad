@@ -8,4 +8,4 @@ A notepad webapp built with [elm](http://elm-lang.org/)
 npm install && npm run start
 ```
 
-Open [http://localhost:8000/build/index.html]
+Then goto [http://localhost:8000/build/index.html](http://localhost:8000/build/index.html)
