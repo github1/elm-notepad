@@ -66,7 +66,6 @@ currentNote model =
 
 -- VIEW
 
-
 view : Model -> Html Msg
 view model =
     if List.isEmpty model.notes then
@@ -94,7 +93,6 @@ noteList : Model -> List Note -> Html Msg
 noteList model notes =
     ul [ class "note-list list-group" ]
         (List.reverse (List.map (\n -> noteItem model n) notes))
-
 
 noteItem : Model -> Note -> Html Msg
 noteItem model note =
@@ -189,15 +187,7 @@ applyUpdate msg model =
                 applyEvents model = List.foldl (\t acc ->
                         if .eventType t == "NoteAddedEvent" then
                             let
-                                noteDecoder : Decoder Note
-                                noteDecoder =
-                                            Json.map3 Note
-                                                (Json.field "text" string)
-                                                (Json.field "id" int)
-                                                (Json.field "timeCreated" string)
-                                note = case Json.decodeString noteDecoder (.payload t) of
-                                    Err msg -> newNote "" 0 ""
-                                    Ok result -> result
+                                note = newNote (decodeString t.payload "text") (decodeInt t.payload "id") (decodeString t.payload "timeCreated")
                             in
                             { acc | notes = (::) note acc.notes }
                         else if .eventType t == "NoteDeletedEvent" then
